@@ -1,4 +1,4 @@
-module github.com/speedata/csshtml
+module github.com/boxesandglue/csshtml
 
 go 1.18
 
