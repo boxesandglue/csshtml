@@ -15,17 +15,17 @@ import (
 type tokenstream []*scanner.Token
 
 type qrule struct {
-	Key   tokenstream
-	Value tokenstream
+	key   tokenstream
+	value tokenstream
 }
 
 // sBlock is a block with a selector
 type sBlock struct {
-	Name            string      // only set if this is an at-rule
-	ComponentValues tokenstream // the "selector"
-	ChildAtRules    []*sBlock   // the block's at-rules, if any
-	Blocks          []*sBlock   // the at-rule's blocks, if any
-	Rules           []qrule     // the key-value pairs
+	name            string      // only set if this is an at-rule
+	componentValues tokenstream // the "selector"
+	childAtRules    []*sBlock   // the block's at-rules, if any
+	blocks          []*sBlock   // the at-rule's blocks, if any
+	rules           []qrule     // the key-value pairs
 }
 
 // Page defines a page.
@@ -40,17 +40,20 @@ type Page struct {
 	pageareaRules map[string][]qrule
 }
 
-// CSS wraps multiple stylesheets.
+// CSS is the main structure that contains cascading style sheet information.
+// Multiple stylesheets can be added to the CSS structure and then applied to
+// HTML.
 type CSS struct {
-	Stylesheet []sBlock
 	Pages      map[string]Page
 	FileFinder func(string) (string, error)
-	dirstack   []string
 	FontFaces  []FontFace
+	dirstack   []string
+	stylesheet []sBlock
 }
 
 // PushDir adds a directory to the dir stack. When a file is opened, all new
-// Open calls are relative to this directory.
+// Open calls are relative to this directory. ProcessHTMLFile uses the dir stack
+// internally when it reads a cascade of CSS files.
 func (c *CSS) PushDir(dir string) {
 	if filepath.IsAbs(dir) {
 		c.dirstack = append(c.dirstack, dir)
@@ -71,9 +74,11 @@ func (c *CSS) PopDir() {
 	c.dirstack = c.dirstack[:len(c.dirstack)-1]
 }
 
-// FindFile returns the absolute path of the file. If the requested file is
-// found with the FileFinder then this value is returned instead.
-func (c *CSS) FindFile(filename string) (string, error) {
+// findFile returns the absolute path of the file. If the function in
+// CSS.FileFinder is set, it is used to find the file. If it is unset, findFile
+// returns the filename if is an absolute path or it prefixes the filename with
+// the top entry of the dirstack.
+func (c *CSS) findFile(filename string) (string, error) {
 	if c.FileFinder != nil {
 		if loc, err := c.FileFinder(filename); loc != "" && err == nil {
 			return loc, nil
@@ -244,8 +249,8 @@ outer:
 			case ";":
 				key := trimSpace(toks[start:colon])
 				value := trimSpace(toks[colon+1 : i])
-				q := qrule{Key: key, Value: value}
-				b.Rules = append(b.Rules, q)
+				q := qrule{key: key, value: value}
+				b.rules = append(b.rules, q)
 				colon = 0
 				start = i + 1
 				if start < len(toks) && toks[start].Type == scanner.S {
@@ -267,12 +272,12 @@ outer:
 				startsWithATKeyword := starttok.Type == scanner.AtKeyword && (starttok.Value == "media" || starttok.Value == "supports")
 				nb = consumeBlock(subblock, !startsWithATKeyword)
 				if toks[start].Type == scanner.AtKeyword {
-					nb.Name = toks[start].Value
-					b.ChildAtRules = append(b.ChildAtRules, &nb)
-					nb.ComponentValues = fixupComponentValues(toks[start+1 : i])
+					nb.name = toks[start].Value
+					b.childAtRules = append(b.childAtRules, &nb)
+					nb.componentValues = fixupComponentValues(toks[start+1 : i])
 				} else {
-					b.Blocks = append(b.Blocks, &nb)
-					nb.ComponentValues = fixupComponentValues(toks[start:i])
+					b.blocks = append(b.blocks, &nb)
+					nb.componentValues = fixupComponentValues(toks[start:i])
 				}
 
 				i = i + l
@@ -294,7 +299,7 @@ outer:
 		}
 	}
 	if colon > 0 {
-		b.Rules = append(b.Rules, qrule{Key: toks[start:colon], Value: toks[colon+1:]})
+		b.rules = append(b.rules, qrule{key: toks[start:colon], value: toks[colon+1:]})
 	}
 	return b
 }
@@ -325,8 +330,8 @@ func (c *CSS) doFontFace(ff []qrule) error {
 	// var fontstyle frontend.FontStyle = frontend.FontStyleNormal
 	// var fontfamily string
 	for _, rule := range ff {
-		key := strings.TrimSpace(rule.Key.String())
-		value := strings.TrimSpace(stringValue(rule.Value))
+		key := strings.TrimSpace(rule.key.String())
+		value := strings.TrimSpace(stringValue(rule.value))
 		switch key {
 		case "font-family":
 			f.Family = strings.Trim(value, `"`)
@@ -359,7 +364,7 @@ func (c *CSS) doFontFace(ff []qrule) error {
 			}
 		case "src":
 			src := FontSource{}
-			for _, v := range rule.Value {
+			for _, v := range rule.value {
 				switch v.Type {
 				case scanner.Local:
 					src.Local = v.Value
@@ -422,28 +427,28 @@ func (c *CSS) doFontFace(ff []qrule) error {
 }
 
 func (c *CSS) doPage(block *sBlock) {
-	selector := strings.Trim(block.ComponentValues.String(), " ")
+	selector := strings.Trim(block.componentValues.String(), " ")
 	pg := c.Pages[selector]
 	if pg.pageareaRules == nil {
 		pg.pageareaRules = make(map[string][]qrule)
 	}
-	for _, v := range block.Rules {
-		switch v.Key.String() {
+	for _, v := range block.rules {
+		switch v.key.String() {
 		case "size":
-			pg.Papersize = v.Value.String()
+			pg.Papersize = v.value.String()
 		case "margin":
-			fv := getFourValues(v.Value.String())
+			fv := getFourValues(v.value.String())
 			pg.MarginTop = fv["top"]
 			pg.MarginBottom = fv["bottom"]
 			pg.MarginLeft = fv["left"]
 			pg.MarginRight = fv["right"]
 		default:
-			a := html.Attribute{Key: "!" + v.Key.String(), Val: stringValue(v.Value)}
+			a := html.Attribute{Key: "!" + v.key.String(), Val: stringValue(v.value)}
 			pg.Attributes = append(pg.Attributes, a)
 		}
 	}
-	for _, rule := range block.ChildAtRules {
-		pg.pageareaRules[rule.Name] = rule.Rules
+	for _, rule := range block.childAtRules {
+		pg.pageareaRules[rule.name] = rule.rules
 	}
 	if pg.PageArea == nil {
 		pg.PageArea = make(map[string]map[string]string)
@@ -451,7 +456,7 @@ func (c *CSS) doPage(block *sBlock) {
 	for k, v := range pg.pageareaRules {
 		attrs := make([]html.Attribute, 0, len(v))
 		for _, r := range v {
-			attrs = append(attrs, html.Attribute{Key: "!" + r.Key.String(), Val: stringValue(r.Value)})
+			attrs = append(attrs, html.Attribute{Key: "!" + r.key.String(), Val: stringValue(r.value)})
 		}
 		a, _ := ResolveAttributes(attrs)
 		pg.PageArea[strings.TrimPrefix(k, "@")] = a
@@ -464,10 +469,10 @@ func (c *CSS) processAtRules(stylesheet sBlock) error {
 	if c.Pages == nil {
 		c.Pages = make(map[string]Page)
 	}
-	for _, atrule := range stylesheet.ChildAtRules {
-		switch atrule.Name {
+	for _, atrule := range stylesheet.childAtRules {
+		switch atrule.name {
 		case "font-face":
-			if err := c.doFontFace(atrule.Rules); err != nil {
+			if err := c.doFontFace(atrule.rules); err != nil {
 				return err
 			}
 		case "page":
@@ -484,7 +489,9 @@ func NewCSSParser() *CSS {
 	return &CSS{}
 }
 
-// NewCSSParserWithDefaults returns a new CSS object with the default stylesheet included.
+// NewCSSParserWithDefaults returns a new CSS object with the default stylesheet
+// included. This is a convenience function which adds the CSSdefaults to the
+// returned CSS struct.
 func NewCSSParserWithDefaults() *CSS {
 	c := &CSS{}
 	c.AddCSSText(CSSdefaults)

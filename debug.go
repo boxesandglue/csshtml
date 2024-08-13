@@ -16,18 +16,18 @@ func indent(s string) string {
 func (b sBlock) String() string {
 	ret := []string{}
 	var firstline string
-	if b.Name != "" {
-		firstline = fmt.Sprintf("@%s ", b.Name)
+	if b.name != "" {
+		firstline = fmt.Sprintf("@%s ", b.name)
 	}
-	firstline = firstline + b.ComponentValues.String() + " {"
+	firstline = firstline + b.componentValues.String() + " {"
 	ret = append(ret, firstline)
-	for _, v := range b.Rules {
-		ret = append(ret, "    "+v.Key.String()+":"+v.Value.String()+";")
+	for _, v := range b.rules {
+		ret = append(ret, "    "+v.key.String()+":"+v.value.String()+";")
 	}
-	for _, v := range b.ChildAtRules {
+	for _, v := range b.childAtRules {
 		ret = append(ret, indent(v.String()))
 	}
-	for _, v := range b.Blocks {
+	for _, v := range b.blocks {
 		ret = append(ret, indent(v.String()))
 	}
 	ret = append(ret, "}")
@@ -40,32 +40,4 @@ func (t tokenstream) String() string {
 		ret = append(ret, tok.Value)
 	}
 	return strings.Join(ret, "")
-}
-
-// Show returns the CSS written as a nice string
-func (c *CSS) Show() string {
-	var sb strings.Builder
-
-	var styles map[string]string
-	for name, pg := range c.Pages {
-		fmt.Fprintln(&sb, " Page", name)
-		fmt.Fprintln(&sb, "   Size", pg.Papersize)
-		styles, pg.Attributes = ResolveAttributes(pg.Attributes)
-		fmt.Fprintln(&sb, "   Margin: ", styles["margin-top"], styles["margin-right"], styles["margin-bottom"], styles["margin-left"])
-		for areaname, rules := range pg.pageareaRules {
-			fmt.Fprintln(&sb, "   @", areaname)
-			for _, rule := range rules {
-				fmt.Fprintln(&sb, "     ", rule.Key, rule.Value)
-
-			}
-		}
-	}
-	for _, stylesheet := range c.Stylesheet {
-		for _, block := range stylesheet.Blocks {
-			fmt.Fprintln(&sb, "-------")
-			fmt.Fprintln(&sb, block)
-		}
-		fmt.Fprintln(&sb, "++++++++++")
-	}
-	return sb.String()
 }

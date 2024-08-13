@@ -8,12 +8,13 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// ReadHTMLWithStyles opens an HTML file and read linked stylesheets.
-func (c *CSS) ReadHTMLWithStyles(filename string) (*goquery.Document, error) {
+// ProcessHTMLFile opens an HTML file, reads linked stylesheets, applies the CSS
+// rules and returns the DOM structure.
+func (c *CSS) ProcessHTMLFile(filename string) (*goquery.Document, error) {
 	dir, fn := filepath.Split(filename)
 	c.PushDir(dir)
 
-	filename, err := c.FindFile(fn)
+	filename, err := c.findFile(fn)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func (c *CSS) ReadHTMLWithStyles(filename string) (*goquery.Document, error) {
 				errcond = err
 			}
 			parsedStyles := consumeBlock(block, false)
-			c.Stylesheet = append(c.Stylesheet, parsedStyles)
+			c.stylesheet = append(c.stylesheet, parsedStyles)
 		}
 	})
 	if errcond != nil {
@@ -48,38 +49,10 @@ func (c *CSS) ReadHTMLWithStyles(filename string) (*goquery.Document, error) {
 	return doc, nil
 }
 
-// ParseHTMLFragmentWithCSS takes the HTML text and the CSS text and returns
-// goquery selection.
-func (c *CSS) ParseHTMLFragmentWithCSS(htmltext, csstext string) (*goquery.Document, error) {
-	var err error
-	if err = c.AddCSSText(csstext); err != nil {
-		return nil, err
-	}
-	doc, err := c.ReadHTMLChunk(htmltext)
-	if err != nil {
-		return nil, err
-	}
-	return c.ApplyCSS(doc)
-}
-
-// ParseHTMLFragment takes the HTML text and the CSS text and returns goquery
-// selection. All applied CSS rules are prefixed with an exclamation mark. For
-// example the rule body {  font-size: 12pt; } is converted to !fontsize="12pt".
-// All original attributes remain unchanged. Long attributes are not resolved
-// into their shorter ones: The rule “margin: 10pt;” will not be split into
-// “margin-left: 10pt;” and so on.
-func (c *CSS) ParseHTMLFragment(htmltext string) (*goquery.Document, error) {
-	doc, err := c.ReadHTMLChunk(htmltext)
-	if err != nil {
-		return nil, err
-	}
-	return c.ApplyCSS(doc)
-}
-
-// ReadHTMLChunk reads the HTML text. If there are linked style sheets (<link
-// href=...) these are also read. After reading the HTML and CSS the HTML is
-// stored in c.document.
-func (c *CSS) ReadHTMLChunk(htmltext string) (*goquery.Document, error) {
+// ProcessHTMLChunk reads the HTML text. If there are linked style sheets (<link
+// href=...) these are also read. After reading, the CSS is applied to the HTML
+// DOM which is returned.
+func (c *CSS) ProcessHTMLChunk(htmltext string) (*goquery.Document, error) {
 	var err error
 	r := strings.NewReader(htmltext)
 	doc, err := goquery.NewDocumentFromReader(r)
@@ -97,14 +70,23 @@ func (c *CSS) ReadHTMLChunk(htmltext string) (*goquery.Document, error) {
 			if err = c.processAtRules(parsedStyles); err != nil {
 				errcond = err
 			}
-			c.Stylesheet = append(c.Stylesheet, parsedStyles)
+			c.stylesheet = append(c.stylesheet, parsedStyles)
 		}
 	})
-	return doc, errcond
+	if errcond != nil {
+		return nil, errcond
+	}
+	_, err = c.ApplyCSS(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	return doc, nil
 }
 
-// AddCSSText parses CSS text and appends the rules to the previously
-// read rules.
+// AddCSSText parses CSS text and appends the rules to the previously read
+// rules. If the fragment contains relative links to other files (fonts or other
+// stylesheets for example), the dir stack must be set in advance.
 func (c *CSS) AddCSSText(fragment string) error {
 	toks, err := c.tokenizeAndApplyImport(fragment)
 	if err != nil {
@@ -114,6 +96,6 @@ func (c *CSS) AddCSSText(fragment string) error {
 	if err = c.processAtRules(block); err != nil {
 		return err
 	}
-	c.Stylesheet = append(c.Stylesheet, block)
+	c.stylesheet = append(c.stylesheet, block)
 	return nil
 }

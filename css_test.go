@@ -32,8 +32,8 @@ func TestNestedAtrule(t *testing.T) {
 	}`
 	toks := tokenizeCSSString(str)
 	bl := consumeBlock(toks, false)
-	if len(bl.ChildAtRules[0].ChildAtRules) != 3 {
-		t.Errorf("want 3 child @ rules, got %d", len(bl.ChildAtRules[0].ChildAtRules))
+	if len(bl.childAtRules[0].childAtRules) != 3 {
+		t.Errorf("want 3 child @ rules, got %d", len(bl.childAtRules[0].childAtRules))
 	}
 }
 

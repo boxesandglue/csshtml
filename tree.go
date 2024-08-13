@@ -102,8 +102,8 @@ func resolveStyle(i int, sel *goquery.Selection) {
 			}
 		}
 		block := consumeBlock(tokens, true)
-		for _, rule := range block.Rules {
-			sel.SetAttr("!"+stringValue(rule.Key), stringValue(rule.Value))
+		for _, rule := range block.rules {
+			sel.SetAttr("!"+stringValue(rule.key), stringValue(rule.value))
 		}
 	}
 	sel.Children().Each(resolveStyle)
@@ -412,9 +412,9 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 
 	rules := map[int][]selRule{}
 
-	for _, stylesheet := range c.Stylesheet {
-		for _, block := range stylesheet.Blocks {
-			selector := block.ComponentValues.String()
+	for _, stylesheet := range c.stylesheet {
+		for _, block := range stylesheet.blocks {
+			selector := block.componentValues.String()
 			selectors, err := cascadia.ParseGroupWithPseudoElements(selector)
 			if err != nil {
 				return nil, err
@@ -422,7 +422,7 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 			for _, sel := range selectors {
 				selSpecificity := sel.Specificity()
 				s := selSpecificity[0]*100 + selSpecificity[1]*10 + selSpecificity[2]
-				rules[s] = append(rules[s], selRule{selector: sel, rule: block.Rules})
+				rules[s] = append(rules[s], selRule{selector: sel, rule: block.rules})
 			}
 		}
 	}
@@ -444,14 +444,14 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 					}
 					// remove attributes with the same name, since the new ones
 					// must override the old ones.
-					key := "!" + prefix + stringValue(singlerule.Key)
+					key := "!" + prefix + stringValue(singlerule.key)
 					newAttributes := make([]html.Attribute, 0, len(node.Attr))
 					for _, attr := range node.Attr {
 						if attr.Key != key {
 							newAttributes = append(newAttributes, attr)
 						}
 					}
-					newAttributes = append(newAttributes, html.Attribute{Key: key, Val: stringValue(singlerule.Value)})
+					newAttributes = append(newAttributes, html.Attribute{Key: key, Val: stringValue(singlerule.value)})
 					node.Attr = newAttributes
 				}
 			}
@@ -462,10 +462,10 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 	return doc, nil
 }
 
-// PapersizeWidthHeight converts the spec to the width and height. The parameter
+// papersizeWidthHeight converts the spec to the width and height. The parameter
 // can be a known paper size (such as A4 or letter) or a one or two parameter
 // string such as 20cm 20cm.
-func PapersizeWidthHeight(spec string) (string, string) {
+func papersizeWidthHeight(spec string) (string, string) {
 	spec = strings.ToLower(spec)
 	var width, height string
 	portrait := true

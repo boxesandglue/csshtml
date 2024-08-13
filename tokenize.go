@@ -68,7 +68,7 @@ func (c *CSS) tokenizeCSSFile(filename string) (tokenstream, error) {
 	var err error
 	dir, fn := filepath.Split(filename)
 	c.PushDir(dir)
-	loc, err := c.FindFile(fn)
+	loc, err := c.findFile(fn)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func (c *CSS) tokenizeCSSFile(filename string) (tokenstream, error) {
 				}
 			}
 		} else if tok.Type == scanner.URI {
-			fs, err := c.FindFile(tok.Value)
+			fs, err := c.findFile(tok.Value)
 			if err != nil {
 				return nil, err
 			}
