@@ -198,7 +198,7 @@ func parseBorderAttribute(input string) (width string, style string, color strin
 func GetAttributes(attrs []html.Attribute) map[string]string {
 	resolved := make(map[string]string, len(attrs))
 	for _, attr := range attrs {
-		resolved[strings.TrimPrefix(attr.Key, "!")] = attr.Val
+		resolved[strings.TrimPrefix(attr.Key, "*")] = attr.Val
 	}
 	return resolved
 }
@@ -231,21 +231,21 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			values := getFourValues(attr.Val)
 			for _, margin := range toprightbottomleft {
 				resolved["margin-"+margin] = values[margin]
-				newAttributes = append(newAttributes, html.Attribute{Key: "!margin-" + margin, Val: values[margin]})
+				newAttributes = append(newAttributes, html.Attribute{Key: "*margin-" + margin, Val: values[margin]})
 			}
 		case "list-style":
 			for _, part := range strings.Split(attr.Val, " ") {
 				switch part {
 				case "inside", "outside":
 					resolved["list-style-position"] = part
-					newAttributes = append(newAttributes, html.Attribute{Key: "!list-style-position", Val: part})
+					newAttributes = append(newAttributes, html.Attribute{Key: "*list-style-position", Val: part})
 				default:
 					if strings.HasPrefix(part, "url") {
 						resolved["list-style-image"] = part
-						newAttributes = append(newAttributes, html.Attribute{Key: "!list-style-image", Val: part})
+						newAttributes = append(newAttributes, html.Attribute{Key: "*list-style-image", Val: part})
 					} else {
 						resolved["list-style-type"] = part
-						newAttributes = append(newAttributes, html.Attribute{Key: "!list-style-type", Val: part})
+						newAttributes = append(newAttributes, html.Attribute{Key: "*list-style-type", Val: part})
 					}
 				}
 			}
@@ -253,7 +253,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			values := getFourValues(attr.Val)
 			for _, padding := range toprightbottomleft {
 				resolved["padding-"+padding] = values[padding]
-				newAttributes = append(newAttributes, html.Attribute{Key: "!padding-" + padding, Val: values[padding]})
+				newAttributes = append(newAttributes, html.Attribute{Key: "*padding-" + padding, Val: values[padding]})
 			}
 		case "border":
 			wd, style, color := parseBorderAttribute(attr.Val)
@@ -262,9 +262,9 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 				resolved["border-"+loc+"-width"] = wd
 				resolved["border-"+loc+"-color"] = color
 				newAttributes = append(newAttributes,
-					html.Attribute{Key: "!border-" + loc + "-style", Val: style},
-					html.Attribute{Key: "!border-" + loc + "-width", Val: wd},
-					html.Attribute{Key: "!border-" + loc + "-color", Val: color},
+					html.Attribute{Key: "*border-" + loc + "-style", Val: style},
+					html.Attribute{Key: "*border-" + loc + "-width", Val: wd},
+					html.Attribute{Key: "*border-" + loc + "-color", Val: color},
 				)
 			}
 		case "border-radius":
@@ -272,7 +272,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 				for _, tb := range []string{"top", "bottom"} {
 					resolved["border-"+tb+"-"+lr+"-radius"] = attr.Val
 					newAttributes = append(newAttributes,
-						html.Attribute{Key: "!border-" + tb + "-" + lr + "-radius", Val: attr.Val},
+						html.Attribute{Key: "*border-" + tb + "-" + lr + "-radius", Val: attr.Val},
 					)
 				}
 			}
@@ -280,9 +280,9 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			wd, sty, col := parseBorderAttribute(attr.Val)
 			resolved[key+"-width"], resolved[key+"-style"], resolved[key+"-color"] = wd, sty, col
 			newAttributes = append(newAttributes,
-				html.Attribute{Key: "!" + key + "-width", Val: wd},
-				html.Attribute{Key: "!" + key + "-style", Val: sty},
-				html.Attribute{Key: "!" + key + "-color", Val: col},
+				html.Attribute{Key: "*" + key + "-width", Val: wd},
+				html.Attribute{Key: "*" + key + "-style", Val: sty},
+				html.Attribute{Key: "*" + key + "-color", Val: col},
 			)
 
 		case "border-color":
@@ -290,7 +290,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			for _, loc := range toprightbottomleft {
 				resolved["border-"+loc+"-color"] = values[loc]
 				newAttributes = append(newAttributes,
-					html.Attribute{Key: "!border-" + loc + "-color", Val: values[loc]},
+					html.Attribute{Key: "*border-" + loc + "-color", Val: values[loc]},
 				)
 			}
 		case "border-style":
@@ -298,7 +298,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			for _, loc := range toprightbottomleft {
 				resolved["border-"+loc+"-style"] = values[loc]
 				newAttributes = append(newAttributes,
-					html.Attribute{Key: "!border-" + loc + "-style", Val: values[loc]},
+					html.Attribute{Key: "*border-" + loc + "-style", Val: values[loc]},
 				)
 			}
 		case "border-width":
@@ -306,7 +306,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			for _, loc := range toprightbottomleft {
 				resolved["border-"+loc+"-width"] = values[loc]
 				newAttributes = append(newAttributes,
-					html.Attribute{Key: "!border-" + loc + "-width", Val: values[loc]},
+					html.Attribute{Key: "*border-" + loc + "-width", Val: values[loc]},
 				)
 			}
 			resolved[key] = attr.Val
@@ -338,13 +338,13 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 					if dimen.MatchString(field) || strings.Contains(field, "%") {
 						resolved["font-size"] = field
 						newAttributes = append(newAttributes,
-							html.Attribute{Key: "!font-size", Val: field},
+							html.Attribute{Key: "*font-size", Val: field},
 						)
 
 					} else {
 						resolved["font-name"] = field
 						newAttributes = append(newAttributes,
-							html.Attribute{Key: "!font-name", Val: field},
+							html.Attribute{Key: "*font-name", Val: field},
 						)
 					}
 				}
@@ -352,8 +352,8 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			resolved["font-style"] = fontstyle
 			resolved["font-weight"] = fontweight
 			newAttributes = append(newAttributes,
-				html.Attribute{Key: "!font-style", Val: fontstyle},
-				html.Attribute{Key: "!font-weight", Val: fontweight},
+				html.Attribute{Key: "*font-style", Val: fontstyle},
+				html.Attribute{Key: "*font-weight", Val: fontweight},
 			)
 
 		// font-stretch: ultra-condensed; extra-condensed; condensed;
@@ -364,13 +364,13 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 				if part == "none" || part == "underline" || part == "overline" || part == "line-through" {
 					resolved["text-decoration-line"] = part
 					newAttributes = append(newAttributes,
-						html.Attribute{Key: "!text-decoration-line", Val: part},
+						html.Attribute{Key: "*text-decoration-line", Val: part},
 					)
 
 				} else if part == "solid" || part == "double" || part == "dotted" || part == "dashed" || part == "wavy" {
 					resolved["text-decoration-style"] = part
 					newAttributes = append(newAttributes,
-						html.Attribute{Key: "!text-decoration-style", Val: part},
+						html.Attribute{Key: "*text-decoration-style", Val: part},
 					)
 				}
 			}
@@ -382,7 +382,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 			for _, part := range strings.Split(attr.Val, " ") {
 				resolved["background-color"] = part
 				newAttributes = append(newAttributes,
-					html.Attribute{Key: "!background-color", Val: part},
+					html.Attribute{Key: "*background-color", Val: part},
 				)
 
 			}
@@ -395,7 +395,7 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 	if str, ok := resolved["text-decoration-line"]; ok && str != "none" {
 		resolved["text-decoration-style"] = "solid"
 		newAttributes = append(newAttributes,
-			html.Attribute{Key: "!text-decoration-style", Val: "solid"},
+			html.Attribute{Key: "*text-decoration-style", Val: "solid"},
 		)
 	}
 	return
