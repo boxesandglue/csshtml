@@ -462,10 +462,12 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 	return doc, nil
 }
 
-// papersizeWidthHeight converts the spec to the width and height. The parameter
+// PapersizeWidthHeight converts the spec to the width and height. The parameter
 // can be a known paper size (such as A4 or letter) or a one or two parameter
-// string such as 20cm 20cm.
-func papersizeWidthHeight(spec string) (string, string) {
+// string such as 20cm 20cm. The return values are in one of the units 'mm' or
+// 'in'.  'mm' if the  parameter spec is one of a5, a4, a3, b5, b4, jis-b5 or
+// jis-b4 and 'in' if the parameter spec is one of letter, legal or ledger.
+func PapersizeWidthHeight(spec string) (string, string) {
 	spec = strings.ToLower(spec)
 	var width, height string
 	portrait := true
