@@ -369,7 +369,11 @@ func (c *CSS) doFontFace(ff []qrule) error {
 				case scanner.Local:
 					src.Local = v.Value
 				case scanner.URI:
-					src.URI = v.Value
+					if resolved, err := c.findFile(v.Value); err == nil {
+						src.URI = resolved
+					} else {
+						src.URI = v.Value
+					}
 				case scanner.Format:
 					src.Format = v.Value
 				case scanner.Tech:
