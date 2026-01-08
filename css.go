@@ -314,12 +314,13 @@ type FontSource struct {
 
 // FontFace contains information from a @font-face rule.
 type FontFace struct {
-	Weight     int
-	Style      string
-	Family     string
-	Source     []FontSource
-	Features   []string
-	SizeAdjust float64
+	Weight             int
+	Style              string
+	Family             string
+	Source             []FontSource
+	Features           []string
+	VariationSettings  map[string]float64 // axis tag -> value (e.g., "wght" -> 700)
+	SizeAdjust         float64
 }
 
 func (c *CSS) doFontFace(ff []qrule) error {
@@ -414,6 +415,22 @@ func (c *CSS) doFontFace(ff []qrule) error {
 					prefix = "-"
 				}
 				f.Features = append(f.Features, prefix+strings.TrimSpace(v))
+			}
+		case "font-variation-settings":
+			// Parse CSS syntax: "wght" 700, "wdth" 100
+			if f.VariationSettings == nil {
+				f.VariationSettings = make(map[string]float64)
+			}
+			for _, pair := range strings.Split(value, ",") {
+				pair = strings.TrimSpace(pair)
+				parts := strings.Fields(pair)
+				if len(parts) >= 2 {
+					// Remove quotes from axis tag
+					tag := strings.Trim(parts[0], `"'`)
+					if val, err := strconv.ParseFloat(parts[1], 64); err == nil {
+						f.VariationSettings[tag] = val
+					}
+				}
 			}
 		case "size-adjust":
 			v := strings.TrimSuffix(value, "%")
