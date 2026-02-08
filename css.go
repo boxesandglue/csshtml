@@ -28,16 +28,77 @@ type sBlock struct {
 	rules           []qrule     // the key-value pairs
 }
 
+// ContentTokenType distinguishes different kinds of CSS content tokens.
+type ContentTokenType int
+
+const (
+	// ContentString is a literal string from a CSS content value.
+	ContentString ContentTokenType = iota
+	// ContentCounter is a counter() function call.
+	ContentCounter
+	// ContentLeader is a leader() function call (CSS GCPM).
+	ContentLeader
+)
+
+// ContentToken represents a single parsed piece of a CSS content property value.
+type ContentToken struct {
+	Type  ContentTokenType
+	Value string // string literal or counter name ("page", "pages")
+}
+
+// parseContentTokens converts a CSS tokenstream (the value side of a
+// content property) into structured ContentToken values.
+func parseContentTokens(ts tokenstream) []ContentToken {
+	var tokens []ContentToken
+	for i := 0; i < len(ts); i++ {
+		tok := ts[i]
+		switch tok.Type {
+		case scanner.String:
+			tokens = append(tokens, ContentToken{Type: ContentString, Value: tok.Value})
+		case scanner.Function:
+			if tok.Value == "counter" {
+				// next non-whitespace token should be the counter name (Ident)
+				i++
+				for i < len(ts) && ts[i].Type == scanner.S {
+					i++
+				}
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					tokens = append(tokens, ContentToken{Type: ContentCounter, Value: ts[i].Value})
+				}
+				// skip until closing )
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+			} else if tok.Value == "leader" {
+				// next non-whitespace token should be the pattern string
+				i++
+				for i < len(ts) && ts[i].Type == scanner.S {
+					i++
+				}
+				if i < len(ts) && ts[i].Type == scanner.String {
+					tokens = append(tokens, ContentToken{Type: ContentLeader, Value: ts[i].Value})
+				}
+				// skip until closing )
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+			}
+		}
+	}
+	return tokens
+}
+
 // Page defines a page.
 type Page struct {
-	PageArea      map[string]map[string]string // key value pairs for the page areas
-	Attributes    []html.Attribute
-	Papersize     string
-	MarginLeft    string
-	MarginRight   string
-	MarginTop     string
-	MarginBottom  string
-	pageareaRules map[string][]qrule
+	PageArea        map[string]map[string]string    // key value pairs for the page areas
+	PageAreaContent map[string][]ContentToken        // parsed content tokens per area
+	Attributes      []html.Attribute
+	Papersize       string
+	MarginLeft      string
+	MarginRight     string
+	MarginTop       string
+	MarginBottom    string
+	pageareaRules   map[string][]qrule
 }
 
 // CSS is the main structure that contains cascading style sheet information.
@@ -481,6 +542,18 @@ func (c *CSS) doPage(block *sBlock) {
 		}
 		a, _ := ResolveAttributes(attrs)
 		pg.PageArea[strings.TrimPrefix(k, "@")] = a
+	}
+
+	if pg.PageAreaContent == nil {
+		pg.PageAreaContent = make(map[string][]ContentToken)
+	}
+	for areaName, rules := range pg.pageareaRules {
+		for _, r := range rules {
+			if r.key.String() == "content" {
+				pg.PageAreaContent[strings.TrimPrefix(areaName, "@")] = parseContentTokens(r.value)
+				break
+			}
+		}
 	}
 
 	c.Pages[selector] = pg

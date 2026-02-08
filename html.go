@@ -42,6 +42,14 @@ func (c *CSS) ProcessHTMLFile(filename string) (*goquery.Document, error) {
 	if errcond != nil {
 		return nil, errcond
 	}
+	doc.Find(":root > head style").Each(func(i int, sel *goquery.Selection) {
+		if err := c.AddCSSText(sel.Text()); err != nil {
+			errcond = err
+		}
+	})
+	if errcond != nil {
+		return nil, errcond
+	}
 	_, err = c.ApplyCSS(doc)
 	if err != nil {
 		return nil, err
@@ -71,6 +79,14 @@ func (c *CSS) ProcessHTMLChunk(htmltext string) (*goquery.Document, error) {
 				errcond = err
 			}
 			c.stylesheet = append(c.stylesheet, parsedStyles)
+		}
+	})
+	if errcond != nil {
+		return nil, errcond
+	}
+	doc.Find(":root > head style").Each(func(i int, sel *goquery.Selection) {
+		if err := c.AddCSSText(sel.Text()); err != nil {
+			errcond = err
 		}
 	})
 	if errcond != nil {
