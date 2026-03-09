@@ -122,7 +122,7 @@ func selectorString(toks tokenstream) string {
 			sb.WriteString(tok.Value)
 			sb.WriteByte('(')
 		case scanner.Hash:
-			sb.WriteByte('#')
+			// Value already contains "#" prefix from fixupComponentValues
 			sb.WriteString(tok.Value)
 		default:
 			sb.WriteString(tok.Value)

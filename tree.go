@@ -417,6 +417,9 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 	for _, stylesheet := range c.stylesheet {
 		for _, block := range stylesheet.blocks {
 			selector := selectorString(block.componentValues)
+			if selector == "" {
+				continue
+			}
 			selectors, err := cascadia.ParseGroupWithPseudoElements(selector)
 			if err != nil {
 				return nil, err

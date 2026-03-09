@@ -162,6 +162,40 @@ func TestConsumeBlock_EmptyBlock(t *testing.T) {
 	}
 }
 
+func TestSelectorString_IDNotDoubleHash(t *testing.T) {
+	css := `#important { color: red; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	sel := selectorString(bl.blocks[0].componentValues)
+	if sel != "#important" {
+		t.Errorf("selector = %q, want %q", sel, "#important")
+	}
+}
+
+func TestApplyCSS_IDSelector(t *testing.T) {
+	htmlStr := `<html><head></head><body><p id="important">text</p></body></html>`
+	css := `#important { color: green; }`
+	c := NewCSSParser()
+	if err := c.AddCSSText(css); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := c.ProcessHTMLChunk(htmlStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = c.ApplyCSS(doc)
+	if err != nil {
+		t.Fatalf("ApplyCSS failed: %v", err)
+	}
+	p := doc.Find("#important")
+	if val, exists := p.Attr("!color"); !exists || val != "green" {
+		t.Errorf("#important !color = %q (exists=%v), want 'green'", val, exists)
+	}
+}
+
 func TestConsumeBlock_PseudoClass(t *testing.T) {
 	css := `a:hover { color: green; }`
 	toks := tokenizeCSSString(css)
