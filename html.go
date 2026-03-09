@@ -36,6 +36,7 @@ func (c *CSS) ProcessHTMLFile(filename string) (*goquery.Document, error) {
 				errcond = err
 			}
 			parsedStyles := consumeBlock(block, false)
+			parsedStyles.blocks = flattenNestedBlocks(parsedStyles.blocks)
 			c.stylesheet = append(c.stylesheet, parsedStyles)
 		}
 	})
@@ -75,6 +76,7 @@ func (c *CSS) ProcessHTMLChunk(htmltext string) (*goquery.Document, error) {
 				errcond = err
 			}
 			parsedStyles := consumeBlock(block, false)
+			parsedStyles.blocks = flattenNestedBlocks(parsedStyles.blocks)
 			if err = c.processAtRules(parsedStyles); err != nil {
 				errcond = err
 			}
@@ -109,6 +111,8 @@ func (c *CSS) AddCSSText(fragment string) error {
 		return err
 	}
 	block := consumeBlock(toks, false)
+	// Flatten CSS nesting (e.g. .card { & > h2 { ... } } → .card > h2 { ... })
+	block.blocks = flattenNestedBlocks(block.blocks)
 	if err = c.processAtRules(block); err != nil {
 		return err
 	}

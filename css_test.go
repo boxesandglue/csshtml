@@ -1,6 +1,7 @@
 package csshtml
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -62,5 +63,114 @@ func TestFontFace(t *testing.T) {
 	if want, got := "color-COLRv1", firstFontFace.Source[1].Tech; got != want {
 		t.Errorf(`firstFontFace.Source[1].Tech = %s, want %s`, got, want)
 	}
+}
 
+func TestConsumeBlock_SimpleRules(t *testing.T) {
+	css := `p { color: red; font-size: 12pt; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	if len(bl.blocks[0].rules) != 2 {
+		t.Errorf("got %d rules, want 2", len(bl.blocks[0].rules))
+	}
+}
+
+func TestConsumeBlock_MultipleSelectors(t *testing.T) {
+	css := `h1 { color: blue; } p { color: red; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 2 {
+		t.Fatalf("got %d blocks, want 2", len(bl.blocks))
+	}
+}
+
+func TestConsumeBlock_ClassSelector(t *testing.T) {
+	css := `.highlight { background: yellow; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	sel := selectorString(bl.blocks[0].componentValues)
+	if !strings.Contains(sel, ".highlight") {
+		t.Errorf("selector = %q, want to contain '.highlight'", sel)
+	}
+}
+
+func TestConsumeBlock_IDSelector(t *testing.T) {
+	css := `#main { width: 100%; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	sel := selectorString(bl.blocks[0].componentValues)
+	if !strings.Contains(sel, "#main") {
+		t.Errorf("selector = %q, want to contain '#main'", sel)
+	}
+}
+
+func TestConsumeBlock_DescendantSelector(t *testing.T) {
+	css := `div p { margin: 0; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	sel := strings.Join(strings.Fields(selectorString(bl.blocks[0].componentValues)), " ")
+	if sel != "div p" {
+		t.Errorf("selector = %q, want 'div p'", sel)
+	}
+}
+
+func TestConsumeBlock_ChildCombinator(t *testing.T) {
+	css := `ul > li { list-style: none; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	sel := strings.Join(strings.Fields(selectorString(bl.blocks[0].componentValues)), " ")
+	if sel != "ul > li" {
+		t.Errorf("selector = %q, want 'ul > li'", sel)
+	}
+}
+
+func TestConsumeBlock_RuleWithoutTrailingSemicolon(t *testing.T) {
+	css := `p { color: red }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	if len(bl.blocks[0].rules) != 1 {
+		t.Errorf("got %d rules, want 1", len(bl.blocks[0].rules))
+	}
+}
+
+func TestConsumeBlock_EmptyBlock(t *testing.T) {
+	css := `p { }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	if len(bl.blocks[0].rules) != 0 {
+		t.Errorf("got %d rules, want 0", len(bl.blocks[0].rules))
+	}
+}
+
+func TestConsumeBlock_PseudoClass(t *testing.T) {
+	css := `a:hover { color: green; }`
+	toks := tokenizeCSSString(css)
+	bl := consumeBlock(toks, false)
+	if len(bl.blocks) != 1 {
+		t.Fatalf("got %d blocks, want 1", len(bl.blocks))
+	}
+	sel := selectorString(bl.blocks[0].componentValues)
+	if !strings.Contains(sel, ":hover") {
+		t.Errorf("selector = %q, want to contain ':hover'", sel)
+	}
 }

@@ -198,7 +198,9 @@ func parseBorderAttribute(input string) (width string, style string, color strin
 func GetAttributes(attrs []html.Attribute) map[string]string {
 	resolved := make(map[string]string, len(attrs))
 	for _, attr := range attrs {
-		resolved[strings.TrimPrefix(attr.Key, "*")] = attr.Val
+		key := strings.TrimPrefix(attr.Key, "*")
+		key = strings.TrimPrefix(key, "!")
+		resolved[key] = attr.Val
 	}
 	return resolved
 }
@@ -414,7 +416,7 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 
 	for _, stylesheet := range c.stylesheet {
 		for _, block := range stylesheet.blocks {
-			selector := block.componentValues.String()
+			selector := selectorString(block.componentValues)
 			selectors, err := cascadia.ParseGroupWithPseudoElements(selector)
 			if err != nil {
 				return nil, err

@@ -90,8 +90,8 @@ func parseContentTokens(ts tokenstream) []ContentToken {
 
 // Page defines a page.
 type Page struct {
-	PageArea        map[string]map[string]string    // key value pairs for the page areas
-	PageAreaContent map[string][]ContentToken        // parsed content tokens per area
+	PageArea        map[string]map[string]string // key value pairs for the page areas
+	PageAreaContent map[string][]ContentToken    // parsed content tokens per area
 	Attributes      []html.Attribute
 	Papersize       string
 	MarginLeft      string
@@ -243,6 +243,9 @@ func fixupComponentValues(toks tokenstream) tokenstream {
 		} else if toks[i].Type == scanner.Delim && toks[i].Value == ":" && toks[i+1].Type == scanner.Ident {
 			toks[i+1].Value = ":" + toks[i+1].Value
 			combineNext = true
+		} else if toks[i].Type == scanner.Delim && toks[i].Value == ":" && toks[i+1].Type == scanner.Function {
+			toks[i+1].Value = ":" + toks[i+1].Value
+			combineNext = true
 		} else if toks[i].Type == scanner.Hash {
 			toks[i].Value = "#" + toks[i].Value
 		}
@@ -343,6 +346,7 @@ outer:
 
 				i = i + l
 				start = i + 1
+				colon = 0
 				// skip over whitespace
 				if start < len(toks) && toks[start].Type == scanner.S {
 					start++
@@ -375,13 +379,13 @@ type FontSource struct {
 
 // FontFace contains information from a @font-face rule.
 type FontFace struct {
-	Weight             int
-	Style              string
-	Family             string
-	Source             []FontSource
-	Features           []string
-	VariationSettings  map[string]float64 // axis tag -> value (e.g., "wght" -> 700)
-	SizeAdjust         float64
+	Weight            int
+	Style             string
+	Family            string
+	Source            []FontSource
+	Features          []string
+	VariationSettings map[string]float64 // axis tag -> value (e.g., "wght" -> 700)
+	SizeAdjust        float64
 }
 
 func (c *CSS) doFontFace(ff []qrule) error {

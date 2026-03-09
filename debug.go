@@ -3,6 +3,8 @@ package csshtml
 import (
 	"fmt"
 	"strings"
+
+	"github.com/speedata/css/scanner"
 )
 
 func indent(s string) string {
@@ -37,7 +39,11 @@ func (b sBlock) String() string {
 func (t tokenstream) String() string {
 	ret := []string{}
 	for _, tok := range t {
-		ret = append(ret, tok.Value)
+		if tok.Type == scanner.Function {
+			ret = append(ret, tok.Value+"(")
+		} else {
+			ret = append(ret, tok.Value)
+		}
 	}
 	return strings.Join(ret, "")
 }
