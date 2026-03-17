@@ -38,6 +38,8 @@ const (
 	ContentCounter
 	// ContentLeader is a leader() function call (CSS GCPM).
 	ContentLeader
+	// ContentURL is a url() reference to an image or other resource.
+	ContentURL
 )
 
 // ContentToken represents a single parsed piece of a CSS content property value.
@@ -55,6 +57,8 @@ func parseContentTokens(ts tokenstream) []ContentToken {
 		switch tok.Type {
 		case scanner.String:
 			tokens = append(tokens, ContentToken{Type: ContentString, Value: tok.Value})
+		case scanner.URI:
+			tokens = append(tokens, ContentToken{Type: ContentURL, Value: tok.Value})
 		case scanner.Function:
 			if tok.Value == "counter" {
 				// next non-whitespace token should be the counter name (Ident)
@@ -169,7 +173,7 @@ td, th          { display: table-cell }
 caption         { display: table-caption }
 th              { font-weight: bold; text-align: center }
 caption         { text-align: center }
-body            { margin: 0pt; line-height: 1.2; hyphens: auto; font-weight: normal; }
+body            { margin: 0pt; line-height: 1.2; hyphens: auto; font-weight: normal; text-align: start; }
 p               { font-size: 1em; margin: 1.5em 0 }
 h1              { font-size: 2em; margin:  .67em 0 }
 h2              { font-size: 1.5em; margin: .75em 0 }
