@@ -315,6 +315,20 @@ outer:
 					colon = i
 				}
 			case ";":
+				if colon == 0 || colon < start {
+					// No colon found before semicolon — this is not a
+					// valid key:value rule (e.g. a stray "import url(...);"
+					// without the leading @). Skip it.
+					start = i + 1
+					if start < len(toks) && toks[start].Type == scanner.S {
+						start++
+					}
+					if start == len(toks) {
+						break outer
+					}
+					i++
+					continue
+				}
 				key := trimSpace(toks[start:colon])
 				value := trimSpace(toks[colon+1 : i])
 				q := qrule{key: key, value: value}
