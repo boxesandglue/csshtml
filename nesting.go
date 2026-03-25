@@ -3,7 +3,7 @@ package csshtml
 import (
 	"strings"
 
-	"github.com/speedata/css/scanner"
+	scanner "github.com/speedata/css"
 )
 
 // flattenNestedBlocks recursively flattens CSS nesting. Nested selector blocks

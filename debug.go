@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/speedata/css/scanner"
+	scanner "github.com/speedata/css"
 )
 
 func indent(s string) string {

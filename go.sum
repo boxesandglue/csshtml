@@ -3,8 +3,8 @@ github.com/PuerkitoBio/goquery v1.11.0/go.mod h1:wQHgxUOU3JGuj3oD/QFfxUdlzW6xPHf
 github.com/andybalholm/cascadia v1.3.3 h1:AG2YHrzJIm4BZ19iwJ/DAua6Btl3IwJX+VI4kktS1LM=
 github.com/andybalholm/cascadia v1.3.3/go.mod h1:xNd9bqTn98Ln4DwST8/nG+H0yuB8Hmgu1YHNnWw0GeA=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/speedata/css/scanner v0.0.0-20250825095519-68d469dc62c4 h1:l1XHHdRZ4LharN1CRUoMOBNKzG84NLNN05nDGJs1f2Q=
-github.com/speedata/css/scanner v0.0.0-20250825095519-68d469dc62c4/go.mod h1:uF4+EGySaBnGeZpXZ0boh/oR6P0vNiYfQ2MAJXCU9hE=
+github.com/speedata/css v1.0.5 h1:eJms65mtBVtWx3YsRn7crNfZSNMB1/wb2f9fhx2hP7o=
+github.com/speedata/css v1.0.5/go.mod h1:xRFJesAMD/T6sqUeQUs5cqwuV0MwPbj7W/3ghmCo38g=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=

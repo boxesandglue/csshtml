@@ -12,7 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/andybalholm/cascadia"
-	"github.com/speedata/css/scanner"
+	scanner "github.com/speedata/css"
 )
 
 var (

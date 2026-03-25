@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/speedata/css/scanner"
+	scanner "github.com/speedata/css"
 	"golang.org/x/net/html"
 )
 

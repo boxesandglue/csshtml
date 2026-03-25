@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/speedata/css/scanner"
+	scanner "github.com/speedata/css"
 )
 
 // tokenizeAndApplyImport converts a CSS string to a Tokenstream. Also read
