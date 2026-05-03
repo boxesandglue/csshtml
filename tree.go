@@ -482,21 +482,60 @@ func PapersizeWidthHeight(spec string) (string, string) {
 			// good, nothing to do
 		case "landscape":
 			portrait = false
-		case "a5":
-			width = "148mm"
-			height = "210mm"
-		case "a4":
-			width = "210mm"
-			height = "297mm"
+		case "a0":
+			width = "841mm"
+			height = "1189mm"
+		case "a1":
+			width = "594mm"
+			height = "841mm"
+		case "a2":
+			width = "420mm"
+			height = "594mm"
 		case "a3":
 			width = "297mm"
 			height = "420mm"
-		case "b5":
-			width = "176mm"
-			height = "250mm"
+		case "a4":
+			width = "210mm"
+			height = "297mm"
+		case "a5":
+			width = "148mm"
+			height = "210mm"
+		case "a6":
+			width = "105mm"
+			height = "148mm"
+		case "a7":
+			width = "74mm"
+			height = "105mm"
+		case "a8":
+			width = "52mm"
+			height = "74mm"
+		case "b0":
+			width = "1000mm"
+			height = "1414mm"
+		case "b1":
+			width = "707mm"
+			height = "1000mm"
+		case "b2":
+			width = "500mm"
+			height = "707mm"
+		case "b3":
+			width = "353mm"
+			height = "500mm"
 		case "b4":
 			width = "250mm"
 			height = "353mm"
+		case "b5":
+			width = "176mm"
+			height = "250mm"
+		case "b6":
+			width = "125mm"
+			height = "176mm"
+		case "b7":
+			width = "88mm"
+			height = "125mm"
+		case "b8":
+			width = "62mm"
+			height = "88mm"
 		case "jis-b5":
 			width = "182mm"
 			height = "257mm"
