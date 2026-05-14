@@ -36,6 +36,10 @@ const (
 	ContentString ContentTokenType = iota
 	// ContentCounter is a counter() function call.
 	ContentCounter
+	// ContentCounters is a counters(name, separator) function call —
+	// joins every ancestor counter of the same name with the separator,
+	// giving hierarchical numbering like "2.1.1".
+	ContentCounters
 	// ContentLeader is a leader() function call (CSS GCPM).
 	ContentLeader
 	// ContentURL is a url() reference to an image or other resource.
@@ -44,16 +48,47 @@ const (
 
 // ContentToken represents a single parsed piece of a CSS content property value.
 type ContentToken struct {
-	Type  ContentTokenType
-	Value string // string literal or counter name ("page", "pages")
+	Type      ContentTokenType
+	Value     string // string literal or counter name ("page", "pages")
+	Separator string // counters() separator; empty otherwise
+}
+
+// ParseContentValue tokenises a raw CSS content-property value string
+// and returns the structured ContentToken slice. Convenience wrapper for
+// callers that already have the value as a string (e.g. an HTML attribute
+// like `!before::content` produced by ApplyCSS).
+func ParseContentValue(value string) []ContentToken {
+	return parseContentTokens(tokenizeCSSString(value))
 }
 
 // parseContentTokens converts a CSS tokenstream (the value side of a
 // content property) into structured ContentToken values.
+//
+// The function accepts BOTH the direct Function-token form (e.g. when
+// reading content directly from @page rules) AND the round-tripped
+// "Ident ( ... )" form. The round trip happens when ApplyCSS stringifies
+// a content value into an HTML attribute and a later caller has to
+// retokenise it — the original Function token decomposes into a bare
+// Ident plus a Delim "(" with whitespace in between.
 func parseContentTokens(ts tokenstream) []ContentToken {
 	var tokens []ContentToken
 	for i := 0; i < len(ts); i++ {
 		tok := ts[i]
+		// Round-trip recovery: a bare Ident immediately followed (across
+		// optional whitespace) by Delim "(" is the same as a Function
+		// token. Rewrite tok in place so the regular Function branch
+		// below handles it.
+		if tok.Type == scanner.Ident {
+			j := i + 1
+			for j < len(ts) && ts[j].Type == scanner.S {
+				j++
+			}
+			if j < len(ts) && ts[j].Type == scanner.Delim && ts[j].Value == "(" {
+				name := tok.Value
+				tok = &scanner.Token{Type: scanner.Function, Value: name}
+				i = j // skip past the "("
+			}
+		}
 		switch tok.Type {
 		case scanner.String:
 			tokens = append(tokens, ContentToken{Type: ContentString, Value: tok.Value})
@@ -68,6 +103,31 @@ func parseContentTokens(ts tokenstream) []ContentToken {
 				}
 				if i < len(ts) && ts[i].Type == scanner.Ident {
 					tokens = append(tokens, ContentToken{Type: ContentCounter, Value: ts[i].Value})
+				}
+				// skip until closing )
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+			} else if tok.Value == "counters" {
+				// counters(name, "sep") — name first, then a string separator
+				i++
+				for i < len(ts) && ts[i].Type == scanner.S {
+					i++
+				}
+				var name, sep string
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					name = ts[i].Value
+					i++
+				}
+				// consume optional whitespace and comma
+				for i < len(ts) && (ts[i].Type == scanner.S || (ts[i].Type == scanner.Delim && ts[i].Value == ",")) {
+					i++
+				}
+				if i < len(ts) && ts[i].Type == scanner.String {
+					sep = ts[i].Value
+				}
+				if name != "" {
+					tokens = append(tokens, ContentToken{Type: ContentCounters, Value: name, Separator: sep})
 				}
 				// skip until closing )
 				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
@@ -262,6 +322,32 @@ func fixupComponentValues(toks tokenstream) tokenstream {
 	return toks
 }
 
+// stripImportant removes a trailing CSS `!important` marker (DELIM "!"
+// followed by IDENT "important", optionally separated by whitespace) from
+// a value token stream. csshtml does not yet honour the priority boost
+// from the cascade, but the value itself must still be applied — without
+// this strip, the bare DELIM "!" reaches stringValue and produces an
+// "unhandled delimiter" warning, while "important" leaks into the
+// stringified value (e.g. "center important") and breaks the property.
+func stripImportant(toks tokenstream) tokenstream {
+	out := make(tokenstream, 0, len(toks))
+	for i := 0; i < len(toks); i++ {
+		t := toks[i]
+		if t.Type == scanner.Delim && t.Value == "!" {
+			j := i + 1
+			for j < len(toks) && toks[j].Type == scanner.S {
+				j++
+			}
+			if j < len(toks) && toks[j].Type == scanner.Ident && strings.EqualFold(toks[j].Value, "important") {
+				i = j
+				continue
+			}
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
 func trimSpace(toks tokenstream) tokenstream {
 	i := 0
 	for {
@@ -330,7 +416,7 @@ outer:
 					continue
 				}
 				key := trimSpace(toks[start:colon])
-				value := trimSpace(toks[colon+1 : i])
+				value := stripImportant(trimSpace(toks[colon+1 : i]))
 				q := qrule{key: key, value: value}
 				b.rules = append(b.rules, q)
 				colon = 0
@@ -382,7 +468,7 @@ outer:
 		}
 	}
 	if colon > 0 {
-		b.rules = append(b.rules, qrule{key: toks[start:colon], value: toks[colon+1:]})
+		b.rules = append(b.rules, qrule{key: toks[start:colon], value: stripImportant(toks[colon+1:])})
 	}
 	return b
 }
