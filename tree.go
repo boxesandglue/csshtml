@@ -30,6 +30,26 @@ func normalizespace(input string) string {
 	return strings.Join(strings.Fields(input), " ")
 }
 
+// cssQuoteString wraps s in double quotes using CSS string-literal
+// escaping rules (only `"` and `\` need escaping; UTF-8 byte sequences
+// pass through verbatim). Critically *not* Go's %q, which escapes
+// non-ASCII codepoints as ` ` — a Go-string literal that CSS
+// parsers misread (CSS escapes are `\2009 `, no `u` prefix).
+func cssQuoteString(s string) string {
+	var sb strings.Builder
+	sb.Grow(len(s) + 2)
+	sb.WriteByte('"')
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '"' || c == '\\' {
+			sb.WriteByte('\\')
+		}
+		sb.WriteByte(c)
+	}
+	sb.WriteByte('"')
+	return sb.String()
+}
+
 func stringValue(toks tokenstream) string {
 	ret := []string{}
 	negative := false
@@ -41,7 +61,7 @@ func stringValue(toks tokenstream) string {
 		case scanner.Ident:
 			ret = append(ret, tok.Value)
 		case scanner.String:
-			ret = append(ret, fmt.Sprintf("%q", tok.Value))
+			ret = append(ret, cssQuoteString(tok.Value))
 		case scanner.Number, scanner.Dimension:
 			if prevNegative {
 				ret = append(ret, "-"+tok.Value)

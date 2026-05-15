@@ -44,13 +44,32 @@ const (
 	ContentLeader
 	// ContentURL is a url() reference to an image or other resource.
 	ContentURL
+	// ContentTargetCounter is a target-counter(target, counter) function
+	// call from CSS GCPM cross-references. Resolves the counter (typically
+	// "page") at the referenced anchor's position.
+	ContentTargetCounter
+	// ContentTargetCounters is a target-counters(target, counter, separator)
+	// function call. Joins the counter stack at the referenced anchor with
+	// the separator.
+	ContentTargetCounters
+	// ContentTargetText is a target-text(target [, content-type]) function
+	// call. Pulls textual content from the referenced anchor (e.g. the
+	// heading title for a TOC entry).
+	ContentTargetText
 )
 
 // ContentToken represents a single parsed piece of a CSS content property value.
 type ContentToken struct {
 	Type      ContentTokenType
-	Value     string // string literal or counter name ("page", "pages")
-	Separator string // counters() separator; empty otherwise
+	Value     string // string literal, counter name, or target-text content-type
+	Separator string // counters() / target-counters() separator
+	// TargetID is the literal anchor id (with leading "#" stripped) for
+	// target-* tokens, when the reference is url(#id) or "#id".
+	TargetID string
+	// TargetAttr is the attribute name for target-* tokens whose first
+	// argument is attr(name) (typically attr(href)). The evaluator must
+	// resolve this against the current element to obtain the actual id.
+	TargetAttr string
 }
 
 // ParseContentValue tokenises a raw CSS content-property value string
@@ -146,10 +165,155 @@ func parseContentTokens(ts tokenstream) []ContentToken {
 				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
 					i++
 				}
+			} else if tok.Value == "target-counter" {
+				// target-counter(target, counter)
+				i++
+				id, attr, newI := parseTargetReference(ts, i)
+				i = newI
+				// consume optional whitespace and comma
+				for i < len(ts) && (ts[i].Type == scanner.S || (ts[i].Type == scanner.Delim && ts[i].Value == ",")) {
+					i++
+				}
+				var counterName string
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					counterName = ts[i].Value
+					i++
+				}
+				if counterName != "" && (id != "" || attr != "") {
+					tokens = append(tokens, ContentToken{
+						Type:       ContentTargetCounter,
+						Value:      counterName,
+						TargetID:   id,
+						TargetAttr: attr,
+					})
+				}
+				// skip until closing )
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+			} else if tok.Value == "target-counters" {
+				// target-counters(target, counter, separator)
+				i++
+				id, attr, newI := parseTargetReference(ts, i)
+				i = newI
+				for i < len(ts) && (ts[i].Type == scanner.S || (ts[i].Type == scanner.Delim && ts[i].Value == ",")) {
+					i++
+				}
+				var counterName, sep string
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					counterName = ts[i].Value
+					i++
+				}
+				for i < len(ts) && (ts[i].Type == scanner.S || (ts[i].Type == scanner.Delim && ts[i].Value == ",")) {
+					i++
+				}
+				if i < len(ts) && ts[i].Type == scanner.String {
+					sep = ts[i].Value
+				}
+				if counterName != "" && (id != "" || attr != "") {
+					tokens = append(tokens, ContentToken{
+						Type:       ContentTargetCounters,
+						Value:      counterName,
+						Separator:  sep,
+						TargetID:   id,
+						TargetAttr: attr,
+					})
+				}
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+			} else if tok.Value == "target-text" {
+				// target-text(target [, content-type])
+				i++
+				id, attr, newI := parseTargetReference(ts, i)
+				i = newI
+				for i < len(ts) && (ts[i].Type == scanner.S || (ts[i].Type == scanner.Delim && ts[i].Value == ",")) {
+					i++
+				}
+				contentType := "content" // CSS GCPM default
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					contentType = ts[i].Value
+				}
+				if id != "" || attr != "" {
+					tokens = append(tokens, ContentToken{
+						Type:       ContentTargetText,
+						Value:      contentType,
+						TargetID:   id,
+						TargetAttr: attr,
+					})
+				}
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
 			}
 		}
 	}
 	return tokens
+}
+
+// parseTargetReference parses the first argument of a target-* function:
+// url(#id), "#id", or attr(name). Returns the explicit id (with leading "#"
+// stripped) or the attribute name, plus the new token index positioned
+// just past whatever was consumed. Returns empty strings if no recognised
+// reference form was found.
+func parseTargetReference(ts tokenstream, i int) (id, attr string, newIdx int) {
+	for i < len(ts) && ts[i].Type == scanner.S {
+		i++
+	}
+	if i >= len(ts) {
+		return "", "", i
+	}
+	switch ts[i].Type {
+	case scanner.URI:
+		id = strings.TrimPrefix(ts[i].Value, "#")
+		i++
+	case scanner.String:
+		id = strings.TrimPrefix(ts[i].Value, "#")
+		i++
+	case scanner.Function:
+		if ts[i].Value == "attr" {
+			i++
+			for i < len(ts) && ts[i].Type == scanner.S {
+				i++
+			}
+			if i < len(ts) && ts[i].Type == scanner.Ident {
+				attr = ts[i].Value
+				i++
+			}
+			for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+				i++
+			}
+			if i < len(ts) {
+				i++
+			}
+		}
+	case scanner.Ident:
+		// Round-trip recovery: "attr" as a bare Ident followed by "(" is
+		// the same as the Function token.
+		if ts[i].Value == "attr" {
+			j := i + 1
+			for j < len(ts) && ts[j].Type == scanner.S {
+				j++
+			}
+			if j < len(ts) && ts[j].Type == scanner.Delim && ts[j].Value == "(" {
+				i = j + 1
+				for i < len(ts) && ts[i].Type == scanner.S {
+					i++
+				}
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					attr = ts[i].Value
+					i++
+				}
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+				if i < len(ts) {
+					i++
+				}
+			}
+		}
+	}
+	return id, attr, i
 }
 
 // Page defines a page.
