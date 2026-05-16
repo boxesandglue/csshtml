@@ -189,10 +189,10 @@ func TestParseContentValue_TargetText(t *testing.T) {
 // existing counter/counters behaviour.
 func TestParseContentValue_TargetCounterMalformed(t *testing.T) {
 	cases := []string{
-		`target-counter()`,                  // no args
-		`target-counter(url(#x))`,           // missing counter name
-		`target-counter(, page)`,            // empty reference
-		`target-counter(attr(), page)`,     // empty attr name
+		`target-counter()`,             // no args
+		`target-counter(url(#x))`,      // missing counter name
+		`target-counter(, page)`,       // empty reference
+		`target-counter(attr(), page)`, // empty attr name
 	}
 	for _, in := range cases {
 		t.Run(in, func(t *testing.T) {
