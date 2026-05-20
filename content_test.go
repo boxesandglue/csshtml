@@ -184,6 +184,57 @@ func TestParseContentValue_TargetText(t *testing.T) {
 	}
 }
 
+// TestParseContentValue_Attr covers top-level attr(name) — CSS Values 4
+// generated content from HTML attributes. The fallback / type forms of
+// attr() are intentionally not parsed; the tail is skipped.
+func TestParseContentValue_Attr(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want []ContentToken
+	}{
+		{
+			name: "bare attr()",
+			in:   `attr(vnumber)`,
+			want: []ContentToken{{Type: ContentAttr, Value: "vnumber"}},
+		},
+		{
+			name: "attr() with surrounding literal",
+			in:   `"Vers " attr(vnumber) ":"`,
+			want: []ContentToken{
+				{Type: ContentString, Value: "Vers "},
+				{Type: ContentAttr, Value: "vnumber"},
+				{Type: ContentString, Value: ":"},
+			},
+		},
+		{
+			name: "attr() with whitespace inside parens",
+			in:   `attr( data-label )`,
+			want: []ContentToken{{Type: ContentAttr, Value: "data-label"}},
+		},
+		{
+			name: "empty attr() drops the token",
+			in:   `attr()`,
+			want: nil,
+		},
+		{
+			name: "attr() inside target-counter still uses TargetAttr (no ContentAttr)",
+			in:   `target-counter(attr(href), page)`,
+			want: []ContentToken{
+				{Type: ContentTargetCounter, Value: "page", TargetAttr: "href"},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ParseContentValue(tc.in)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("ParseContentValue(%q):\n got  %#v\n want %#v", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestParseContentValue_TargetCounterMalformed makes sure malformed input
 // produces no token rather than panicking — silent skip matches the
 // existing counter/counters behaviour.

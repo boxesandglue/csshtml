@@ -56,6 +56,13 @@ const (
 	// call. Pulls textual content from the referenced anchor (e.g. the
 	// heading title for a TOC entry).
 	ContentTargetText
+	// ContentAttr is an attr(name) function call at the top level of a
+	// content value. Reads the named HTML attribute of the current element
+	// and inserts its value as a string. Note that attr() also appears as
+	// a *sub*-argument of the target-* functions (e.g. target-counter(
+	// attr(href), page)); that nested use is recognised inside the
+	// target-* branches and does not produce a ContentAttr token.
+	ContentAttr
 )
 
 // ContentToken represents a single parsed piece of a CSS content property value.
@@ -245,6 +252,26 @@ func parseContentTokens(ts tokenstream) []ContentToken {
 				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
 					i++
 				}
+			} else if tok.Value == "attr" {
+				// attr(name) — top-level CSS Values 4 attribute reference.
+				// The fallback / type forms (`attr(href url)`, `attr(x px,
+				// 0)`) are not modelled; only the bare ident is consumed
+				// and the rest of the parenthesised tail is skipped.
+				i++
+				for i < len(ts) && ts[i].Type == scanner.S {
+					i++
+				}
+				var attrName string
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					attrName = ts[i].Value
+					i++
+				}
+				if attrName != "" {
+					tokens = append(tokens, ContentToken{Type: ContentAttr, Value: attrName})
+				}
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
 			}
 		}
 	}
@@ -406,7 +433,7 @@ h4,
 blockquote, ul,
 fieldset, form,
 ol, dl, dir,
-h5              { font-size: 1em; margin: 1.5em 0; text-align: left; }
+h5              { font-size: 1em; margin: 1.5em 0; text-align: start; }
 h6              { font-size: .75em; margin: 1.67em 0 }
 h1, h2, h3, h4,
 h5, h6, b,

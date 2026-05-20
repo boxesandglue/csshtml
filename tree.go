@@ -22,7 +22,7 @@ var (
 	dimen              = regexp.MustCompile(`^^[+\-]?(?:(?:0+|[1-9]\d*)(?:\.\d*)?|\.\d+)(px|mm|cm|in|pt|pc|ch|em|ex|lh|rem|0)$`)
 	zeroDimen          = regexp.MustCompile(`^0+(px|mm|cm|in|pt|pc|ch|em|ex|lh|rem)?`)
 	style              = regexp.MustCompile(`^none|hidden|dotted|dashed|solid|double|groove|ridge|inset|outset$`)
-	colorMatcher       = regexp.MustCompile(`^rgba?\s*\(`)
+	colorMatcher       = regexp.MustCompile(`^(?:rgba?|hsla?|cmyk|device-cmyk)\s*\(`)
 	toprightbottomleft = [...]string{"top", "right", "bottom", "left"}
 )
 
@@ -400,13 +400,23 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 		case "background":
 			// background-clip, background-color, background-image,
 			// background-origin, background-position, background-repeat,
-			// background-size, and background-attachment
-			for _, part := range strings.Split(attr.Val, " ") {
-				resolved["background-color"] = part
+			// background-size, and background-attachment.
+			// stringValue() round-trips function-valued tokens with spaces
+			// in between (e.g. "cmyk( 100% , 0% , 0% , 0% )"), so a naive
+			// space-split would shatter the value into useless fragments.
+			// Treat a leading color-function call as the whole color value.
+			if trimmed := strings.TrimSpace(attr.Val); colorMatcher.MatchString(trimmed) {
+				resolved["background-color"] = trimmed
 				newAttributes = append(newAttributes,
-					html.Attribute{Key: "*background-color", Val: part},
+					html.Attribute{Key: "*background-color", Val: trimmed},
 				)
-
+			} else {
+				for _, part := range strings.Split(attr.Val, " ") {
+					resolved["background-color"] = part
+					newAttributes = append(newAttributes,
+						html.Attribute{Key: "*background-color", Val: part},
+					)
+				}
 			}
 		default:
 			resolved[key] = attr.Val
