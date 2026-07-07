@@ -390,6 +390,16 @@ func (c *CSS) PopDir() {
 	c.dirstack = c.dirstack[:len(c.dirstack)-1]
 }
 
+// FindFile resolves a CSS-referenced path to an absolute location using the
+// same rules as internal stylesheet loading: the CSS.FileFinder callback if
+// set, otherwise the top of the dirstack (populated via PushDir). Callers
+// outside the package that resolve url() paths (e.g. htmlbag page
+// backgrounds) should use this rather than reading FileFinder directly, so
+// the dirstack-based glu/markdown route resolves too.
+func (c *CSS) FindFile(filename string) (string, error) {
+	return c.findFile(filename)
+}
+
 // findFile returns the absolute path of the file. If the function in
 // CSS.FileFinder is set, it is used to find the file. If it is unset, findFile
 // returns the filename if is an absolute path or it prefixes the filename with
