@@ -1,3 +1,5 @@
+[![Explore in Constellation](https://img.shields.io/badge/Explore%20in-Constellation-blue)](https://constellation.speedata.de)
+
 # csshtml
 
 A Go package that parses CSS stylesheets and applies them to HTML documents, producing a DOM tree with computed style attributes on each node.
@@ -52,3 +54,9 @@ func main() {
 - `ProcessHTMLFile(filename string)` - Load HTML file, read linked stylesheets, apply CSS
 - `ProcessHTMLChunk(html string)` - Parse HTML string and apply CSS
 - `ApplyCSS(doc *goquery.Document)` - Apply collected CSS rules to a document
+
+## Ecosystem
+
+csshtml is part of a broader ecosystem of PDF, typesetting and publishing technologies.
+
+**[Explore the constellation →](https://constellation.speedata.de)**
