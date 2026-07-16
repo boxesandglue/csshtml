@@ -208,3 +208,37 @@ func TestConsumeBlock_PseudoClass(t *testing.T) {
 		t.Errorf("selector = %q, want to contain ':hover'", sel)
 	}
 }
+
+// TestPageMarginLonghands: the margin longhands are valid page-context
+// properties (CSS Paged Media 3 §7.2) and must reach the Page margin fields
+// just like the margin shorthand. A longhand following the shorthand in the
+// same rule overrides that side.
+func TestPageMarginLonghands(t *testing.T) {
+	str := `
+	@page {
+		size: a4;
+		margin: 2cm;
+		margin-right: 6cm;
+	}
+	@page :first {
+		margin-top: 8cm;
+	}`
+	cp := NewCSSParser()
+	if err := cp.AddCSSText(str); err != nil {
+		t.Fatal(err)
+	}
+	base := cp.Pages[""]
+	if got, want := base.MarginTop, "2cm"; got != want {
+		t.Errorf("base MarginTop = %q, want %q", got, want)
+	}
+	if got, want := base.MarginRight, "6cm"; got != want {
+		t.Errorf("base MarginRight = %q, want %q (longhand must override the shorthand)", got, want)
+	}
+	first := cp.Pages[":first"]
+	if got, want := first.MarginTop, "8cm"; got != want {
+		t.Errorf(":first MarginTop = %q, want %q", got, want)
+	}
+	if got := first.MarginLeft; got != "" {
+		t.Errorf(":first MarginLeft = %q, want empty (inherited later via mergePageWithBase)", got)
+	}
+}

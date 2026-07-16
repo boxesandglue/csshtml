@@ -854,6 +854,19 @@ func (c *CSS) doPage(block *sBlock) {
 			pg.MarginBottom = fv["bottom"]
 			pg.MarginLeft = fv["left"]
 			pg.MarginRight = fv["right"]
+		// The margin longhands are valid page-context properties (CSS Paged
+		// Media 3 §7.2). Without these cases they fell into the generic
+		// attribute list, where nothing consumes them for the page geometry —
+		// a silent no-op. Declaration order decides, so a longhand after the
+		// shorthand overrides that side (normal cascade within one rule).
+		case "margin-top":
+			pg.MarginTop = strings.TrimSpace(v.value.String())
+		case "margin-bottom":
+			pg.MarginBottom = strings.TrimSpace(v.value.String())
+		case "margin-left":
+			pg.MarginLeft = strings.TrimSpace(v.value.String())
+		case "margin-right":
+			pg.MarginRight = strings.TrimSpace(v.value.String())
 		default:
 			a := html.Attribute{Key: "!" + v.key.String(), Val: stringValue(v.value)}
 			pg.Attributes = append(pg.Attributes, a)
