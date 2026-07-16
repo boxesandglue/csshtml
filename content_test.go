@@ -352,3 +352,39 @@ func TestParseContentValue_RoundTrip(t *testing.T) {
 		})
 	}
 }
+
+// TestParseContentValue_Element covers element(name) (CSS GCPM running
+// elements), including the optional occurrence keyword and the
+// stringValue round trip that decomposes the Function token.
+func TestParseContentValue_Element(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want []ContentToken
+	}{
+		{
+			name: "element()",
+			in:   `element(pagefooter)`,
+			want: []ContentToken{{Type: ContentElement, Value: "pagefooter"}},
+		},
+		{
+			name: "element() with occurrence keyword",
+			in:   `element(pagefooter, first)`,
+			want: []ContentToken{{Type: ContentElement, Value: "pagefooter"}},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ParseContentValue(tc.in)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("ParseContentValue(%q):\n got  %#v\n want %#v", tc.in, got, tc.want)
+			}
+			roundTripped := stringValue(tokenizeCSSString(tc.in))
+			got = ParseContentValue(roundTripped)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("round-trip(%q) → %q:\n got  %#v\n want %#v",
+					tc.in, roundTripped, got, tc.want)
+			}
+		})
+	}
+}

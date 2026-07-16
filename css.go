@@ -63,6 +63,13 @@ const (
 	// attr(href), page)); that nested use is recognised inside the
 	// target-* branches and does not produce a ContentAttr token.
 	ContentAttr
+	// ContentElement is an element(name) function call (CSS GCPM running
+	// elements). Valid only in @page margin boxes: it places the running
+	// element that was removed from the normal flow via
+	// `position: running(name)`. Value holds the running element name.
+	// The optional keyword argument (first | start | last | first-except)
+	// is not modelled; the first occurrence in the document is used.
+	ContentElement
 )
 
 // ContentToken represents a single parsed piece of a CSS content property value.
@@ -248,6 +255,20 @@ func parseContentTokens(ts tokenstream) []ContentToken {
 						TargetID:   id,
 						TargetAttr: attr,
 					})
+				}
+				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
+					i++
+				}
+			} else if tok.Value == "element" {
+				// element(name [, first|start|last|first-except]):
+				// CSS GCPM running element placement. Only the name is
+				// consumed; the optional occurrence keyword is skipped.
+				i++
+				for i < len(ts) && ts[i].Type == scanner.S {
+					i++
+				}
+				if i < len(ts) && ts[i].Type == scanner.Ident {
+					tokens = append(tokens, ContentToken{Type: ContentElement, Value: ts[i].Value})
 				}
 				for i < len(ts) && !(ts[i].Type == scanner.Delim && ts[i].Value == ")") {
 					i++
