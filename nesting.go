@@ -124,6 +124,22 @@ func selectorString(toks tokenstream) string {
 		case scanner.Hash:
 			// Value already contains "#" prefix from fixupComponentValues
 			sb.WriteString(tok.Value)
+		case scanner.String:
+			// The scanner strips the quotes; without re-quoting,
+			// [href="#x"] would reach cascadia as [href=#x].
+			sb.WriteString(cssQuoteString(tok.Value))
+		// The attribute match operators carry their meaning in the token
+		// type; the scanner sets Value to "" for all of them.
+		case scanner.Includes:
+			sb.WriteString("~=")
+		case scanner.DashMatch:
+			sb.WriteString("|=")
+		case scanner.PrefixMatch:
+			sb.WriteString("^=")
+		case scanner.SuffixMatch:
+			sb.WriteString("$=")
+		case scanner.SubstringMatch:
+			sb.WriteString("*=")
 		default:
 			sb.WriteString(tok.Value)
 		}

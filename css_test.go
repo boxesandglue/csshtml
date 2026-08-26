@@ -3,6 +3,8 @@ package csshtml
 import (
 	"strings"
 	"testing"
+
+	"github.com/andybalholm/cascadia"
 )
 
 func TestNestedAtrule(t *testing.T) {
@@ -109,6 +111,39 @@ func TestConsumeBlock_IDSelector(t *testing.T) {
 	sel := selectorString(bl.blocks[0].componentValues)
 	if !strings.Contains(sel, "#main") {
 		t.Errorf("selector = %q, want to contain '#main'", sel)
+	}
+}
+
+// TestConsumeBlock_AttributeSelectors guards the selector round trip
+// through selectorString: string values must be re-quoted (the scanner
+// strips the quotes) and the five attribute match operators must be
+// re-emitted (the scanner encodes them in the token type with an empty
+// Value). Every serialized form must also survive cascadia's parser —
+// that is the consumer the string is produced for.
+func TestConsumeBlock_AttributeSelectors(t *testing.T) {
+	cases := []struct{ css, want string }{
+		{`a[href] { color: red; }`, `a[href]`},
+		{`a[href="#deep"] { color: red; }`, `a[href="#deep"]`},
+		{`a[href^="#"] { color: red; }`, `a[href^="#"]`},
+		{`a[href$=".pdf"] { color: red; }`, `a[href$=".pdf"]`},
+		{`a[href*="ref"] { color: red; }`, `a[href*="ref"]`},
+		{`a[rel~="noopener"] { color: red; }`, `a[rel~="noopener"]`},
+		{`a[lang|="en"] { color: red; }`, `a[lang|="en"]`},
+		{`a[title="say \"hi\""] { color: red; }`, `a[title="say \"hi\""]`},
+	}
+	for _, c := range cases {
+		toks := tokenizeCSSString(c.css)
+		bl := consumeBlock(toks, false)
+		if len(bl.blocks) != 1 {
+			t.Fatalf("%s: got %d blocks, want 1", c.css, len(bl.blocks))
+		}
+		sel := selectorString(bl.blocks[0].componentValues)
+		if sel != c.want {
+			t.Errorf("selector = %q, want %q", sel, c.want)
+		}
+		if _, err := cascadia.ParseGroupWithPseudoElements(sel); err != nil {
+			t.Errorf("cascadia rejects %q: %v", sel, err)
+		}
 	}
 }
 
