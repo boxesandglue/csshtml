@@ -424,11 +424,16 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 		}
 	}
 
+	// Default the style only when nothing has set it. This block used to run
+	// unconditionally, overwriting a style parsed from the shorthand above or
+	// declared through the text-decoration-style longhand.
 	if str, ok := resolved["text-decoration-line"]; ok && str != "none" {
-		resolved["text-decoration-style"] = "solid"
-		newAttributes = append(newAttributes,
-			html.Attribute{Key: "*text-decoration-style", Val: "solid"},
-		)
+		if _, set := resolved["text-decoration-style"]; !set {
+			resolved["text-decoration-style"] = "solid"
+			newAttributes = append(newAttributes,
+				html.Attribute{Key: "*text-decoration-style", Val: "solid"},
+			)
+		}
 	}
 	return
 }
