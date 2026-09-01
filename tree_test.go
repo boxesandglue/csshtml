@@ -2,6 +2,8 @@ package csshtml
 
 import (
 	"testing"
+
+	"golang.org/x/net/html"
 )
 
 func TestParseBorder(t *testing.T) {
@@ -35,5 +37,40 @@ func TestParseBorder(t *testing.T) {
 				t.Errorf(`parseBorderAttribute(%s) got "%s %s %s" want "%s %s %s"`, tC.input, wd, sty, col, tC.width, tC.style, tC.color)
 			}
 		})
+	}
+}
+
+func TestResolveTextDecoration(t *testing.T) {
+	testCases := []struct {
+		attrs []html.Attribute
+		line  string
+		style string
+	}{
+		{[]html.Attribute{{Key: "!text-decoration", Val: "underline"}}, "underline", "solid"},
+		{[]html.Attribute{{Key: "!text-decoration", Val: "underline dotted"}}, "underline", "dotted"},
+		{[]html.Attribute{{Key: "!text-decoration", Val: "dashed underline"}}, "underline", "dashed"},
+		{[]html.Attribute{{Key: "!text-decoration", Val: "line-through wavy"}}, "line-through", "wavy"},
+		{[]html.Attribute{{Key: "!text-decoration", Val: "overline double"}}, "overline", "double"},
+		{[]html.Attribute{{Key: "!text-decoration", Val: "none"}}, "none", ""},
+		{
+			[]html.Attribute{
+				{Key: "!text-decoration-line", Val: "underline"},
+				{Key: "!text-decoration-style", Val: "wavy"},
+			},
+			"underline", "wavy",
+		},
+		{
+			[]html.Attribute{{Key: "!text-decoration-line", Val: "underline"}},
+			"underline", "solid",
+		},
+	}
+	for _, tc := range testCases {
+		resolved, _ := ResolveAttributes(tc.attrs)
+		if got := resolved["text-decoration-line"]; got != tc.line {
+			t.Errorf("%v: text-decoration-line = %q, want %q", tc.attrs, got, tc.line)
+		}
+		if got := resolved["text-decoration-style"]; got != tc.style {
+			t.Errorf("%v: text-decoration-style = %q, want %q", tc.attrs, got, tc.style)
+		}
 	}
 }
