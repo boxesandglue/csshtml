@@ -67,6 +67,44 @@ func TestFontFace(t *testing.T) {
 	}
 }
 
+func TestFontFaceWeightRange(t *testing.T) {
+	str := `
+	@font-face {
+		font-family: "VF";
+		font-weight: 200 900;
+		src: url("vf.ttf");
+	}
+	@font-face {
+		font-family: "Single";
+		font-weight: 500;
+		src: url("single.ttf");
+	}
+	@font-face {
+		font-family: "Spaced";
+		font-weight: extra light;
+		src: url("xl.ttf");
+	}`
+	cp := NewCSSParser()
+	if err := cp.AddCSSText(str); err != nil {
+		t.Error(err)
+	}
+	if got, want := len(cp.FontFaces), 3; got != want {
+		t.Fatalf("len(c.FontFaces) = %d, want %d", got, want)
+	}
+	vf := cp.FontFaces[0]
+	if vf.Weight != 200 || vf.WeightMax != 900 {
+		t.Errorf("range = %d..%d, want 200..900", vf.Weight, vf.WeightMax)
+	}
+	single := cp.FontFaces[1]
+	if single.Weight != 500 || single.WeightMax != 500 {
+		t.Errorf("single = %d..%d, want 500..500", single.Weight, single.WeightMax)
+	}
+	spaced := cp.FontFaces[2]
+	if spaced.Weight != 200 || spaced.WeightMax != 200 {
+		t.Errorf("spaced keyword = %d..%d, want 200..200", spaced.Weight, spaced.WeightMax)
+	}
+}
+
 func TestConsumeBlock_SimpleRules(t *testing.T) {
 	css := `p { color: red; font-size: 12pt; }`
 	toks := tokenizeCSSString(css)

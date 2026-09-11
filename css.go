@@ -705,7 +705,11 @@ type FontSource struct {
 
 // FontFace contains information from a @font-face rule.
 type FontFace struct {
-	Weight            int
+	Weight int
+	// WeightMax is the upper end of a CSS Fonts 4 weight range
+	// (`font-weight: 200 900`, typically a variable font). For a single
+	// weight value WeightMax equals Weight.
+	WeightMax         int
 	Style             string
 	Family            string
 	Source            []FontSource
@@ -714,9 +718,39 @@ type FontFace struct {
 	SizeAdjust        float64
 }
 
+// parseFontWeightValue parses one font-weight value: a number or one of
+// the CSS weight keywords. Reports false for anything else.
+func parseFontWeightValue(value string) (int, bool) {
+	if i, err := strconv.Atoi(value); err == nil {
+		return i, true
+	}
+	switch strings.ToLower(value) {
+	case "thin", "hairline":
+		return 100, true
+	case "extra light", "ultra light":
+		return 200, true
+	case "light":
+		return 300, true
+	case "normal":
+		return 400, true
+	case "medium":
+		return 500, true
+	case "semi bold", "demi bold":
+		return 600, true
+	case "bold":
+		return 700, true
+	case "extra bold", "ultra bold":
+		return 800, true
+	case "black", "heavy":
+		return 900, true
+	}
+	return 0, false
+}
+
 func (c *CSS) doFontFace(ff []qrule) error {
 	f := FontFace{
-		Weight: 400,
+		Weight:    400,
+		WeightMax: 400,
 	}
 	// var fontweight frontend.FontWeight = 400
 	// var fontstyle frontend.FontStyle = frontend.FontStyleNormal
@@ -730,28 +764,19 @@ func (c *CSS) doFontFace(ff []qrule) error {
 		case "font-style":
 			f.Style = value
 		case "font-weight":
-			if i, err := strconv.Atoi(value); err == nil {
-				f.Weight = i
-			} else {
-				switch strings.ToLower(value) {
-				case "thin", "hairline":
-					f.Weight = 100
-				case "extra light", "ultra light":
-					f.Weight = 200
-				case "light":
-					f.Weight = 300
-				case "normal":
-					f.Weight = 400
-				case "medium":
-					f.Weight = 500
-				case "semi bold", "demi bold":
-					f.Weight = 600
-				case "bold":
-					f.Weight = 700
-				case "extra bold", "ultra bold":
-					f.Weight = 800
-				case "black", "heavy":
-					f.Weight = 900
+			// A single value ("500", "bold", also two-word keywords like
+			// "extra light") or a CSS Fonts 4 range for variable fonts
+			// ("200 900"). Try the whole value first so the spaced
+			// keywords keep working, then the two-value range form.
+			if w, ok := parseFontWeightValue(value); ok {
+				f.Weight = w
+				f.WeightMax = w
+			} else if fields := strings.Fields(value); len(fields) == 2 {
+				w1, ok1 := parseFontWeightValue(fields[0])
+				w2, ok2 := parseFontWeightValue(fields[1])
+				if ok1 && ok2 {
+					f.Weight = w1
+					f.WeightMax = w2
 				}
 			}
 		case "src":
