@@ -116,6 +116,11 @@ func (c *CSS) AddCSSText(fragment string) error {
 	if err = c.processAtRules(block); err != nil {
 		return err
 	}
+	// Reject broken selectors here, so the error points at the stylesheet
+	// and not at the first content that ApplyCSS runs on.
+	if err = validateSelectors(block); err != nil {
+		return err
+	}
 	c.stylesheet = append(c.stylesheet, block)
 	return nil
 }

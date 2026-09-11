@@ -438,6 +438,23 @@ func ResolveAttributes(attrs []html.Attribute) (resolved map[string]string, newA
 	return
 }
 
+// validateSelectors parses every selector of the block's rule blocks and
+// returns an error naming the first selector that cascadia cannot parse.
+// This reports broken selectors where the stylesheet is read, long before
+// ApplyCSS runs on some unrelated content.
+func validateSelectors(block sBlock) error {
+	for _, b := range block.blocks {
+		selector := selectorString(b.componentValues)
+		if selector == "" {
+			continue
+		}
+		if _, err := cascadia.ParseGroupWithPseudoElements(selector); err != nil {
+			return fmt.Errorf("cannot parse CSS selector %q: %w", selector, err)
+		}
+	}
+	return nil
+}
+
 // ApplyCSS resolves CSS rules in the DOM. Each CSS rule is added to the
 // selection as an attribute (prefixed with a !). Pseudo elements are prefixed
 // with ::.
@@ -457,7 +474,7 @@ func (c *CSS) ApplyCSS(doc *goquery.Document) (*goquery.Document, error) {
 			}
 			selectors, err := cascadia.ParseGroupWithPseudoElements(selector)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("cannot parse CSS selector %q: %w", selector, err)
 			}
 			for _, sel := range selectors {
 				selSpecificity := sel.Specificity()
