@@ -1,6 +1,7 @@
 package csshtml
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -313,5 +314,92 @@ func TestPageMarginLonghands(t *testing.T) {
 	}
 	if got := first.MarginLeft; got != "" {
 		t.Errorf(":first MarginLeft = %q, want empty (inherited later via mergePageWithBase)", got)
+	}
+}
+
+// TestPageURLResolvedAtParseTime: relative url() inside @page rules must be
+// resolved against the declaring stylesheet (the dirstack top at parse time),
+// not left raw for consumers that resolve after PopDir against the document
+// directory (issue #3). Covers both the page attributes and margin box
+// content tokens.
+func TestPageURLResolvedAtParseTime(t *testing.T) {
+	str := `
+	@page {
+		background-image: url(bg.pdf);
+		@top-center {
+			content: url("logo.svg");
+		}
+	}`
+	dir := filepath.Join(string(filepath.Separator), "template", "dir")
+	cp := NewCSSParser()
+	cp.PushDir(dir)
+	err := cp.AddCSSText(str)
+	cp.PopDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pg := cp.Pages[""]
+	var bg string
+	for _, attr := range pg.Attributes {
+		if attr.Key == "!background-image" {
+			bg = attr.Val
+		}
+	}
+	if got, want := bg, "url("+filepath.Join(dir, "bg.pdf")+")"; got != want {
+		t.Errorf("background-image = %q, want %q", got, want)
+	}
+	content := pg.PageAreaContent["top-center"]
+	if len(content) != 1 {
+		t.Fatalf("len(PageAreaContent[top-center]) = %d, want 1", len(content))
+	}
+	if got, want := content[0].Value, filepath.Join(dir, "logo.svg"); content[0].Type != ContentURL || got != want {
+		t.Errorf("content token = (%d, %q), want (ContentURL, %q)", content[0].Type, got, want)
+	}
+}
+
+// TestPageURLLeftAlone: absolute paths, fragment references, data: URIs and
+// scheme URLs must pass through parse-time resolution unchanged, and without
+// a dirstack a relative path stays raw.
+func TestPageURLLeftAlone(t *testing.T) {
+	abs := filepath.Join(string(filepath.Separator), "abs", "bg.pdf")
+	str := `
+	@page {
+		background-image: url(` + abs + `);
+		-bag-a: url(#anchor);
+		-bag-b: url(https://example.com/a.pdf);
+		-bag-c: url(data:image/png;base64,AAAA);
+	}
+	@page nodir {
+		background-image: url(raw.pdf);
+	}`
+	cp := NewCSSParser()
+	cp.PushDir(filepath.Join(string(filepath.Separator), "template", "dir"))
+	err := cp.AddCSSText(str)
+	cp.PopDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"!background-image": "url(" + abs + ")",
+		"!-bag-a":           "url(#anchor)",
+		"!-bag-b":           "url(https://example.com/a.pdf)",
+		"!-bag-c":           "url(data:image/png;base64,AAAA)",
+	}
+	for _, attr := range cp.Pages[""].Attributes {
+		if w, ok := want[attr.Key]; ok && attr.Val != w {
+			t.Errorf("%s = %q, want %q", attr.Key, attr.Val, w)
+		}
+	}
+
+	cpNoDir := NewCSSParser()
+	if err := cpNoDir.AddCSSText(str); err != nil {
+		t.Fatal(err)
+	}
+	for _, attr := range cpNoDir.Pages["nodir"].Attributes {
+		if attr.Key == "!background-image" {
+			if got, want := attr.Val, "url(raw.pdf)"; got != want {
+				t.Errorf("empty dirstack: background-image = %q, want %q", got, want)
+			}
+		}
 	}
 }

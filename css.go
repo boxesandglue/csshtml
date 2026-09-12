@@ -441,6 +441,25 @@ func (c *CSS) findFile(filename string) (string, error) {
 	return filepath.Join(lastEntry, filename), nil
 }
 
+// resolveURITokens rewrites relative url() token values to absolute paths
+// while the declaring stylesheet's directory is still on the dirstack
+// (CSS Values and Units §4.5: relative URLs resolve against the stylesheet).
+// Fragment references (#anchor, used by target-counter), data: URIs and
+// scheme URLs (http://, https://) are left alone.
+func (c *CSS) resolveURITokens(ts tokenstream) {
+	for _, tok := range ts {
+		if tok.Type != scanner.URI {
+			continue
+		}
+		if strings.HasPrefix(tok.Value, "#") || strings.HasPrefix(tok.Value, "data:") || strings.Contains(tok.Value, "://") {
+			continue
+		}
+		if resolved, err := c.findFile(tok.Value); err == nil && resolved != "" {
+			tok.Value = resolved
+		}
+	}
+}
+
 // CSSdefaults contains browser-like styling of some elements.
 var CSSdefaults = `
 html            { font-size: 10pt; tab-size: 4; font-family: serif; }
@@ -893,11 +912,18 @@ func (c *CSS) doPage(block *sBlock) {
 		case "margin-right":
 			pg.MarginRight = strings.TrimSpace(v.value.String())
 		default:
+			// Resolve url() while the declaring stylesheet's directory is
+			// still on the dirstack; downstream consumers run after PopDir
+			// and would resolve against the document instead (issue #3).
+			c.resolveURITokens(v.value)
 			a := html.Attribute{Key: "!" + v.key.String(), Val: stringValue(v.value)}
 			pg.Attributes = append(pg.Attributes, a)
 		}
 	}
 	for _, rule := range block.childAtRules {
+		for _, r := range rule.rules {
+			c.resolveURITokens(r.value)
+		}
 		pg.pageareaRules[rule.name] = rule.rules
 	}
 	if pg.PageArea == nil {
