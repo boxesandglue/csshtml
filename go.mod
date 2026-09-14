@@ -1,3 +1,6 @@
+// Deprecated: csshtml has been merged into
+// github.com/boxesandglue/htmlbag as of htmlbag v0.0.54. Every identifier
+// kept its name, so only the import path and the qualifier change.
 module github.com/boxesandglue/csshtml
 
 go 1.25.0

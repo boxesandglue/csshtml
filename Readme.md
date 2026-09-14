@@ -2,6 +2,14 @@
 
 # csshtml
 
+> **This package has moved.** csshtml is now part of
+> [htmlbag](https://github.com/boxesandglue/htmlbag) as of htmlbag
+> v0.0.54, and this repository is archived. Every identifier kept its
+> name, so switching means changing the import path from
+> `github.com/boxesandglue/csshtml` to `github.com/boxesandglue/htmlbag`
+> and the qualifier from `csshtml.` to `htmlbag.`. v0.0.22 is the final
+> release; older versions stay available through the Go module proxy.
+
 A Go package that parses CSS stylesheets and applies them to HTML documents, producing a DOM tree with computed style attributes on each node.
 
 ## Features
